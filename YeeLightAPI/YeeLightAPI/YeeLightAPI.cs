@@ -1,35 +1,49 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace YeeLightAPI
 {
+    public class YeeLightConstants
+    {
+        public const int MinValueForDurationParameter = 30;
+
+        public enum PowerStateParamValues
+        {
+            ON,
+            OFF
+        }
+
+        public enum EffectParamValues
+        {
+            SUDDEN,
+            SMOOTH
+        }
+    }
+
     public class YeeLight
     {
+        private IPAddress lightIpAddress = null;
+        private ushort lightPort = 0;
         private TcpClient yeelightTcpClient = new TcpClient();
         private bool musicMode = false;
         private Exception lastError = null;
 
-        public YeeLight()
-        {
+        public YeeLight() { }
 
+        public YeeLight(IPAddress ipAddress, ushort port)
+        {
+            lightIpAddress = ipAddress;
+            lightPort = port;
         }
 
-        public YeeLight(IPAddress ipAddress, int port)
-        {
-            Connect(ipAddress, port);
-        }
-
-        public bool Connect(IPAddress ipAddress, int port)
+        public bool Connect()
         {
             try
             {
-                yeelightTcpClient.Connect(ipAddress, port);
+                yeelightTcpClient.Connect(lightIpAddress, lightPort);
                 musicMode = false;
                 return true;
             }
@@ -37,14 +51,19 @@ namespace YeeLightAPI
             return false;
         }
 
-        public bool isConnected()
+        public (IPAddress ipAddress, ushort port) GetLightIPAddressAndPort()
+        {
+            return (ipAddress: lightIpAddress, port: lightPort);
+        }
+
+        public bool IsConnected()
         {
             return yeelightTcpClient.Connected;
         }
 
-        public bool isMusicMode()
+        public bool IsMusicMode()
         {
-            return musicMode;
+            return musicMode && IsConnected();
         }
 
         public Exception GetLastError()
@@ -56,6 +75,7 @@ namespace YeeLightAPI
         {
             try
             {
+                ThrowExceptionIfNotConnected();
                 yeelightTcpClient.GetStream().Close();
                 yeelightTcpClient.Close();
 
@@ -66,81 +86,67 @@ namespace YeeLightAPI
             return false;
         }
 
-        private bool SendString(string command)
+        public bool SetBrightness(int brightness, //Range is 0 - 100
+            int duration = YeeLightConstants.MinValueForDurationParameter,
+            YeeLightConstants.EffectParamValues effectType = YeeLightConstants.EffectParamValues.SUDDEN)
         {
             try
             {
-                if (yeelightTcpClient.Connected)
+                if (brightness > 100 || brightness < 0)
                 {
-                    return yeelightTcpClient.Client.Send(Encoding.ASCII.GetBytes(command)) > 0;
+                    throw new ArgumentOutOfRangeException();
                 }
+                ThrowExceptionIfNotConnected();
+                return SendCommandMessage(1, "set_bright", new string[] { brightness.ToString(), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString() });
             }
             catch (Exception exc) { lastError = exc; }
             return false;
         }
 
-        public bool SetBrightness(int brightness) //Range is 0 - 100
+        public bool SetPower(YeeLightConstants.PowerStateParamValues powerState,
+            int duration = YeeLightConstants.MinValueForDurationParameter,
+            YeeLightConstants.EffectParamValues effectType = YeeLightConstants.EffectParamValues.SUDDEN)
         {
             try
             {
-                if (yeelightTcpClient.Connected && brightness <= 100 && brightness >= 0)
-                {
-                    return SendString("{\"id\":" + 1 + ",\"method\":\"set_bright\",\"params\":[ " + brightness.ToString() + ", \"sudden\", 100" + "]}\r\n");
-                }
-                else
-                {
-                    return false;
-                }
+                ThrowExceptionIfNotConnected();
+                return SendCommandMessage(1, "set_power",
+                    new string[] { Utils.GetJsonStringFromParamEnum(powerState), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString() });
             }
             catch (Exception exc) { lastError = exc; }
             return false;
         }
 
-        public bool SetPower(bool status)
+        public bool SetColor(int red, int green, int blue,
+            int duration = YeeLightConstants.MinValueForDurationParameter,
+            YeeLightConstants.EffectParamValues effectType = YeeLightConstants.EffectParamValues.SUDDEN)
         {
             try
             {
-                if (yeelightTcpClient.Connected)
+                if (duration < YeeLightConstants.MinValueForDurationParameter)
                 {
-                    return SendString("{\"id\":" + 1 + ",\"method\":\"set_power\",\"params\":[ " + (status ? "on" : "off") + ", \"sudden\", 100" + "]}\r\n");
+                    throw new ArgumentOutOfRangeException();
                 }
-                else
-                {
-                    return false;
-                }
+                ThrowExceptionIfNotConnected();
+                int value = ((red) << 16) | ((green) << 8) | (blue);
+                effectType.ToString();
+                return SendCommandMessage(1, "set_rgb", new string[] { value.ToString(), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString() });
             }
             catch (Exception exc) { lastError = exc; }
             return false;
         }
 
-        public bool SetColor(int red, int green, int blue)
+        public bool SetMusicMode(IPAddress localIP, ushort localPort, bool state)
         {
             try
             {
-                if (yeelightTcpClient.Connected)
+                if (state)
                 {
-                    int value = ((red) << 16) | ((green) << 8) | (blue);
-                    return SendString("{\"id\":" + 1 + ",\"method\":\"set_rgb\",\"params\":[ " + value.ToString() + ", \"sudden\", 100" + "]}\r\n");
-                }
-                else
-                {
-                    return false;
-                }
-            }
-            catch (Exception exc) { lastError = exc; }
-            return false;
-        }
-
-        public bool SetMusicMode(IPAddress localIP, int localPort)
-        {
-            try
-            {
-                if (!musicMode)
-                {
-                    TcpListener musicModeTcpListener;
-                    musicModeTcpListener = new TcpListener(localIP, localPort);
+                    ThrowExceptionIfNotConnected();
+                    ThrowExceptionIfInMusicMode();
+                    TcpListener musicModeTcpListener = new TcpListener(localIP, localPort);
                     musicModeTcpListener.Start();
-                    SendString("{\"id\":" + 1 + ",\"method\":\"set_music\",\"params\":[1, \"" + localIP + "\"," + localPort + "]}\r\n");
+                    SendCommandMessage(1, "set_music", new string[] { "1", $"\"{localIP}\"", $"{localPort}" });
                     yeelightTcpClient.GetStream().Close();
                     yeelightTcpClient.Close();
 
@@ -158,11 +164,93 @@ namespace YeeLightAPI
                     yeelightTcpClient = musicModeTcpListener.AcceptTcpClient();
                     musicModeTcpListener.Stop();
                     musicMode = true;
-                    return true;
                 }
+                else
+                {
+                    if (IsConnected())
+                    {
+                        SendCommandMessage(1, "set_music", new string[] { "0" });
+                    }
+                    yeelightTcpClient.GetStream().Close();
+                    yeelightTcpClient.Close();
+                    yeelightTcpClient.Connect(lightIpAddress, lightPort);
+                    musicMode = false;
+                }
+                ThrowExceptionIfNotConnected();
+                return true;
             }
             catch (Exception exc) { lastError = exc; }
             return false;
+        }
+
+        private void ThrowExceptionIfNotConnected()
+        {
+            if (!IsConnected())
+            {
+                throw new YeeLightExceptions.DeviceIsNotConnected();
+            }
+        }
+        private void ThrowExceptionIfInMusicMode()
+        {
+            if (!IsMusicMode())
+            {
+                throw new YeeLightExceptions.DeviceIsAlreadyInMusicMode();
+            }
+        }
+        private bool SendCommandMessage(int id_pair, string method_pair, string[] params_pair)
+        {
+            //TODO: use proper json serializer library here
+            string commandMessage = $"{{\"id\":{id_pair},\"method\":\"{method_pair}\",\"params\":[{string.Join(",", params_pair)}]}}\r\n";
+            return SendString(commandMessage);
+        }
+        private bool SendString(string command)
+        {
+            ThrowExceptionIfNotConnected();
+
+            byte[] bytesOfCommand = Encoding.ASCII.GetBytes(command);
+            return yeelightTcpClient.Client.Send(bytesOfCommand) == bytesOfCommand.Length;
+        }
+
+    }
+
+    internal class Utils
+    {
+        public static string GetJsonStringFromParamEnum(YeeLightConstants.EffectParamValues value)
+        {
+            switch (value)
+            {
+                case YeeLightConstants.EffectParamValues.SUDDEN:
+                    return "\"sudden\"";
+                case YeeLightConstants.EffectParamValues.SMOOTH:
+                    return "\"smooth\"";
+            }
+            return string.Empty;
+        }
+        public static string GetJsonStringFromParamEnum(YeeLightConstants.PowerStateParamValues value)
+        {
+            switch (value)
+            {
+                case YeeLightConstants.PowerStateParamValues.ON:
+                    return "\"on\"";
+                case YeeLightConstants.PowerStateParamValues.OFF:
+                    return "\"off\"";
+            }
+            return string.Empty;
+        }
+    }
+
+    namespace YeeLightExceptions
+    {
+        [Serializable]
+        public class DeviceIsNotConnected : Exception
+        {
+            //TODO: add something here
+        }
+
+        [Serializable]
+        public class DeviceIsAlreadyInMusicMode : Exception
+        {
+            //TODO: add something here
         }
     }
 }
