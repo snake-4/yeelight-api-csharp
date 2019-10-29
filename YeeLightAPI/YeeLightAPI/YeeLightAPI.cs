@@ -3,27 +3,12 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using YeeLightAPI.YeeLightConstants;
+using YeeLightAPI.YeeLightExceptions;
 
 namespace YeeLightAPI
 {
-    public class YeeLightConstants
-    {
-        public const int MinValueForDurationParameter = 30;
-
-        public enum PowerStateParamValues
-        {
-            ON,
-            OFF
-        }
-
-        public enum EffectParamValues
-        {
-            SUDDEN,
-            SMOOTH
-        }
-    }
-
-    public class YeeLight
+    public class YeeLightDevice
     {
         private IPAddress lightIpAddress = null;
         private ushort lightPort = 0;
@@ -31,11 +16,29 @@ namespace YeeLightAPI
         private bool musicMode = false;
         private Exception lastError = null;
 
-        public YeeLight() { }
+        public YeeLightDevice() { }
 
-        public YeeLight(IPAddress ipAddress, ushort port)
+        public YeeLightDevice(IPAddress ipAddress, ushort port = Constants.DefaultCommandPort)
         {
             lightIpAddress = ipAddress;
+            lightPort = port;
+        }
+
+        /// <exception cref="Exception"></exception>
+        public YeeLightDevice(string hostname, ushort port = Constants.DefaultCommandPort)
+        {
+            if (!IPAddress.TryParse(hostname, out lightIpAddress))
+            {
+                IPHostEntry hostEntry = Dns.GetHostEntry(hostname);
+                if (hostEntry.AddressList.Length > 0)
+                {
+                    lightIpAddress = hostEntry.AddressList[0];
+                }
+                else
+                {
+                    throw new ArgumentException();
+                }
+            }
             lightPort = port;
         }
 
@@ -54,6 +57,12 @@ namespace YeeLightAPI
         public (IPAddress ipAddress, ushort port) GetLightIPAddressAndPort()
         {
             return (ipAddress: lightIpAddress, port: lightPort);
+        }
+
+        public void SetLightIPAddressAndPort(IPAddress ipAddress, ushort port)
+        {
+            lightIpAddress = ipAddress;
+            lightPort = port;
         }
 
         public bool IsConnected()
@@ -87,8 +96,8 @@ namespace YeeLightAPI
         }
 
         public bool SetBrightness(int brightness, //Range is 0 - 100
-            int duration = YeeLightConstants.MinValueForDurationParameter,
-            YeeLightConstants.EffectParamValues effectType = YeeLightConstants.EffectParamValues.SUDDEN)
+            int duration = Constants.MinValueForDurationParameter,
+            Constants.EffectParamValues effectType = Constants.EffectParamValues.SUDDEN)
         {
             try
             {
@@ -103,9 +112,9 @@ namespace YeeLightAPI
             return false;
         }
 
-        public bool SetPower(YeeLightConstants.PowerStateParamValues powerState,
-            int duration = YeeLightConstants.MinValueForDurationParameter,
-            YeeLightConstants.EffectParamValues effectType = YeeLightConstants.EffectParamValues.SUDDEN)
+        public bool SetPower(Constants.PowerStateParamValues powerState,
+            int duration = Constants.MinValueForDurationParameter,
+            Constants.EffectParamValues effectType = Constants.EffectParamValues.SUDDEN)
         {
             try
             {
@@ -118,12 +127,12 @@ namespace YeeLightAPI
         }
 
         public bool SetColor(int red, int green, int blue,
-            int duration = YeeLightConstants.MinValueForDurationParameter,
-            YeeLightConstants.EffectParamValues effectType = YeeLightConstants.EffectParamValues.SUDDEN)
+            int duration = Constants.MinValueForDurationParameter,
+            Constants.EffectParamValues effectType = Constants.EffectParamValues.SUDDEN)
         {
             try
             {
-                if (duration < YeeLightConstants.MinValueForDurationParameter)
+                if (duration < Constants.MinValueForDurationParameter)
                 {
                     throw new ArgumentOutOfRangeException();
                 }
@@ -187,14 +196,14 @@ namespace YeeLightAPI
         {
             if (!IsConnected())
             {
-                throw new YeeLightExceptions.DeviceIsNotConnected();
+                throw new Exceptions.DeviceIsNotConnected();
             }
         }
         private void ThrowExceptionIfInMusicMode()
         {
             if (!IsMusicMode())
             {
-                throw new YeeLightExceptions.DeviceIsAlreadyInMusicMode();
+                throw new Exceptions.DeviceIsAlreadyInMusicMode();
             }
         }
         private bool SendCommandMessage(int id_pair, string method_pair, string[] params_pair)
@@ -211,46 +220,5 @@ namespace YeeLightAPI
             return yeelightTcpClient.Client.Send(bytesOfCommand) == bytesOfCommand.Length;
         }
 
-    }
-
-    internal class Utils
-    {
-        public static string GetJsonStringFromParamEnum(YeeLightConstants.EffectParamValues value)
-        {
-            switch (value)
-            {
-                case YeeLightConstants.EffectParamValues.SUDDEN:
-                    return "\"sudden\"";
-                case YeeLightConstants.EffectParamValues.SMOOTH:
-                    return "\"smooth\"";
-            }
-            return string.Empty;
-        }
-        public static string GetJsonStringFromParamEnum(YeeLightConstants.PowerStateParamValues value)
-        {
-            switch (value)
-            {
-                case YeeLightConstants.PowerStateParamValues.ON:
-                    return "\"on\"";
-                case YeeLightConstants.PowerStateParamValues.OFF:
-                    return "\"off\"";
-            }
-            return string.Empty;
-        }
-    }
-
-    namespace YeeLightExceptions
-    {
-        [Serializable]
-        public class DeviceIsNotConnected : Exception
-        {
-            //TODO: add something here
-        }
-
-        [Serializable]
-        public class DeviceIsAlreadyInMusicMode : Exception
-        {
-            //TODO: add something here
-        }
     }
 }
