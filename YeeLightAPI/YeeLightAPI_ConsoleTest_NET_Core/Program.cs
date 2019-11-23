@@ -7,7 +7,7 @@ namespace YeeLightAPI_ConsoleTest_NET_Core
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             int SSDPTimeOut = 1000;
             int SSDPRequestCount = 1;
@@ -21,8 +21,8 @@ namespace YeeLightAPI_ConsoleTest_NET_Core
                 Console.WriteLine($"Found {devices.Count} device(s): ");
                 foreach (YeeLightDevice device in devices)
                 {
-                    var ipAndPort = device.GetLightIPAddressAndPort();
-                    Console.WriteLine($"IP: {ipAndPort.ipAddress} | Port: {ipAndPort.port}");
+                    var (ipAddress, port) = device.GetLightIPAddressAndPort();
+                    Console.WriteLine($"IP: {ipAddress} | Port: {port}");
                 }
             }
             else

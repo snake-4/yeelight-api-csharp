@@ -18,6 +18,14 @@ namespace YeeLightAPI
             private const int SSDP_port = 1982; //YeeLight SSDP port
             private const int SSDP_timeOut = 1000; //Default time in microseconds to wait for SSDP packet
 
+            /// <summary>
+            /// Discovers light devices by using SSDP protocol
+            /// </summary>
+            /// <param name="SSDP_receiveTimeOut"> How much time to wait for SSDP packets in milliseconds</param>
+            /// <param name="pingCount"> How many SSDP broadcasts to make before returning</param>
+            /// <returns>
+            /// A list of light devices with IP and TCP port set but not connected.
+            /// </returns>
             public static List<YeeLightDevice> DiscoverDevices(int SSDP_receiveTimeOut = SSDP_timeOut, int pingCount = 1)
             {
                 Dictionary<IPAddress, YeeLightDevice> devices = new Dictionary<IPAddress, YeeLightDevice>();
@@ -28,7 +36,7 @@ namespace YeeLightAPI
                     IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, SSDP_port);
                     socket.JoinMulticastGroup(multicastAddress);
 
-                    socket.Client.ReceiveTimeout = SSDP_timeOut;
+                    socket.Client.ReceiveTimeout = SSDP_receiveTimeOut;
 
                     byte[] buffer = Encoding.ASCII.GetBytes(SSDP_searchMessage);
 
@@ -84,7 +92,7 @@ namespace YeeLightAPI
                     string[] split = ssdpMessage.Split(new string[] { "\r\n" }, StringSplitOptions.RemoveEmptyEntries);
                     foreach (string part in split)
                     {
-                        if (part.StartsWith(SSDP_locationKey))
+                        if (part.StartsWith(SSDP_locationKey, StringComparison.Ordinal))
                         {
                             string valueOfPair = part.Substring(SSDP_locationKey.Length);
                             return GetDeviceFromUri(new Uri(valueOfPair));

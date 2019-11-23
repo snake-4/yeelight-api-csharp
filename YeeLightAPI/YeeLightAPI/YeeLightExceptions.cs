@@ -19,6 +19,12 @@ namespace YeeLightAPI
             {
                 //TODO: add something here
             }
+
+            [Serializable]
+            public class InvalidHostnameArgument : Exception
+            {
+                //TODO: add something here
+            }
         }
     }
 }
