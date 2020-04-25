@@ -9,8 +9,12 @@ namespace YeeLightAPI_ConsoleTest_NET_Core
     {
         static void Main()
         {
-            int SSDPTimeOut = 1000;
+            int SSDPTimeOut = 10000;
             int SSDPRequestCount = 1;
+
+            Console.WriteLine("Beware that these devices usually have rate limits on SSDP requests with very long wait times. You might have to power cycle your device to zero the rate limit delay.");
+            Console.WriteLine("Press any key start a SSDP search request...");
+            Console.ReadKey();
 
             Console.WriteLine($"Sending SSDP search request with {SSDPTimeOut}ms timeout and request count of {SSDPRequestCount} ...");
             Console.WriteLine();
@@ -27,7 +31,7 @@ namespace YeeLightAPI_ConsoleTest_NET_Core
             }
             else
             {
-                Console.WriteLine("No devices has been found.");
+                Console.WriteLine("No devices have been found.");
             }
 
             Console.WriteLine();
