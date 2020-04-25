@@ -256,7 +256,7 @@ namespace YeeLightAPI
         }
         private void ThrowExceptionIfInMusicMode()
         {
-            if (!IsMusicMode())
+            if (IsMusicMode())
             {
                 throw new Exceptions.DeviceIsAlreadyInMusicMode();
             }
