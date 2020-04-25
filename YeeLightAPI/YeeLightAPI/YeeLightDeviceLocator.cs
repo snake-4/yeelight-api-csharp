@@ -24,6 +24,7 @@ namespace YeeLightAPI
             /// </summary>
             /// <param name="SSDP_receiveTimeOut"> How much time to wait for SSDP packets in milliseconds</param>
             /// <param name="pingCount"> How many SSDP broadcasts to make before returning</param>
+            /// <param name="networkInterface"> The network interface to join to Multicast from. If this parameter is null, best interface for Multicast is used.</param>
             /// <returns>
             /// A list of light devices with IP and TCP port set but not connected.
             /// </returns>
@@ -35,7 +36,6 @@ namespace YeeLightAPI
                 {
                     IPAddress multicastAddress = IPAddress.Parse(multiCastAddress);
                     IPEndPoint multicastEndpoint = new IPEndPoint(multicastAddress, SSDP_port);
-
 
                     bool isMulticastJoined = false;
 
