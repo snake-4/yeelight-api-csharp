@@ -16,6 +16,7 @@
     <FileVersion>0.0.6.0</FileVersion>
     <ApplicationIcon>yeelight_icon.ico</ApplicationIcon>
 	<PackageIcon>yeelight_icon.jpg</PackageIcon>
+	<Description>A library for managing and discovering YeeLight devices on your LAN.</Description>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
