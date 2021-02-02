@@ -1,4 +1,6 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -240,6 +242,12 @@ namespace YeeLightAPI
             ThrowExceptionIfNotConnected();
         }
 
+        
+        public string[] GetProperties(string[] props)
+        {
+            return (string[])SendCommandAndGetMessage(1, "get_prop", props.Select(x => '\"' + x + '\"').ToArray()).Result;
+        }
+
         private static void ThrowExceptionIfIntArgIsOutOfRange(string argumentName, int argument, int lowLimit, int highLimit = Int32.MaxValue)
         {
             if (argument < lowLimit || argument > highLimit)
@@ -266,6 +274,50 @@ namespace YeeLightAPI
             //TODO: use proper json serializer library here
             string commandMessage = $"{{\"id\":{id_pair},\"method\":\"{method_pair}\",\"params\":[{string.Join(",", params_pair)}]}}\r\n";
             return SendString(commandMessage);
+        }
+
+        class ResponseMessage
+        {
+            [JsonProperty("id")]
+            public int Id;
+
+            [JsonProperty("result", NullValueHandling = NullValueHandling.Ignore)]
+            public object[] Result;
+
+            [JsonProperty("error", NullValueHandling = NullValueHandling.Ignore)]
+            public object Error;
+        };
+
+        private ResponseMessage SendCommandAndGetMessage(int id_pair, string method_pair, string[] params_pair)
+        {
+            using (var stream = yeelightTcpClient.GetStream())
+            {
+                //TODO: remove the stream read buffer flushing as soon as other methods requiring responses are implemented
+                byte[] tmpBuf = new byte[1024];
+                while (stream.DataAvailable) { stream.Read(tmpBuf, 0, tmpBuf.Length); }
+            }
+
+            SendCommandMessage(id_pair, method_pair, params_pair);
+            return JsonConvert.DeserializeObject<ResponseMessage>(ReadString());
+        }
+
+        private string ReadString()
+        {
+            ThrowExceptionIfNotConnected();
+
+            string retVal = string.Empty;
+            using (var stream = yeelightTcpClient.GetStream())
+            {
+                byte[] buffer = new byte[1024];
+
+                int numBytesRead;
+                while ((numBytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    retVal += Encoding.ASCII.GetString(buffer, 0, numBytesRead);
+                }
+            }
+
+            return retVal;
         }
         private bool SendString(string command)
         {
