@@ -146,7 +146,7 @@ namespace YeeLightAPI
             ThrowExceptionIfIntArgIsOutOfRange("duration", duration, Constants.MinValueForDurationParameter);
             ThrowExceptionIfIntArgIsOutOfRange("brightness", brightness, 0, 100);
             ThrowExceptionIfNotConnected();
-            return SendCommandMessage(1, "set_bright", new string[] { brightness.ToString(System.Globalization.CultureInfo.InvariantCulture), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            return SendCommandMessage(1, "set_bright", brightness, Utils.GetJsonStringFromParamEnum(effectType), duration).Result[0] as string == "OK";
         }
 
         /// <summary>
@@ -164,8 +164,7 @@ namespace YeeLightAPI
         {
             ThrowExceptionIfIntArgIsOutOfRange("duration", duration, Constants.MinValueForDurationParameter);
             ThrowExceptionIfNotConnected();
-            return SendCommandMessage(1, "set_power",
-                new string[] { Utils.GetJsonStringFromParamEnum(powerState), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            return SendCommandMessage(1, "set_power", Utils.GetJsonStringFromParamEnum(powerState), Utils.GetJsonStringFromParamEnum(effectType), duration).Result[0] as string == "OK";
         }
 
         /// <summary>
@@ -187,7 +186,7 @@ namespace YeeLightAPI
             ThrowExceptionIfNotConnected();
             int value = (red << 16) | (green << 8) | blue;
             effectType.ToString();
-            return SendCommandMessage(1, "set_rgb", new string[] { value.ToString(System.Globalization.CultureInfo.InvariantCulture), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            return SendCommandMessage(1, "set_rgb", value, Utils.GetJsonStringFromParamEnum(effectType), duration).Result[0] as string == "OK";
         }
 
         /// <summary>
@@ -211,7 +210,7 @@ namespace YeeLightAPI
                 ThrowExceptionIfInMusicMode();
                 TcpListener musicModeTcpListener = new TcpListener(localIP, localPort);
                 musicModeTcpListener.Start();
-                SendCommandMessage(1, "set_music", new string[] { "1", $"\"{localIP}\"", $"{localPort}" });
+                SendCommandMessage(1, "set_music", 1, localIP.ToString(), localPort);
                 CloseConnection();
 
                 int i = 0;
@@ -233,7 +232,7 @@ namespace YeeLightAPI
             {
                 if (IsConnected())
                 {
-                    SendCommandMessage(1, "set_music", new string[] { "0" });
+                    SendCommandMessage(1, "set_music", 0);
                 }
                 CloseConnection();
                 Connect();
@@ -242,10 +241,14 @@ namespace YeeLightAPI
             ThrowExceptionIfNotConnected();
         }
 
-        
         public string[] GetProperties(string[] props)
         {
-            return (string[])SendCommandAndGetMessage(1, "get_prop", props.Select(x => '\"' + x + '\"').ToArray()).Result;
+            return SendCommandMessage(1, "get_prop", props).Result.Cast<string>().ToArray();
+        }
+
+        public string GetProperty(string prop)
+        {
+            return GetProperties(new[] { prop })[0];
         }
 
         private static void ThrowExceptionIfIntArgIsOutOfRange(string argumentName, int argument, int lowLimit, int highLimit = Int32.MaxValue)
@@ -269,53 +272,33 @@ namespace YeeLightAPI
                 throw new Exceptions.DeviceIsAlreadyInMusicMode();
             }
         }
-        private bool SendCommandMessage(int id_pair, string method_pair, string[] params_pair)
+        private MessageTypes.ResponseMessage SendCommandMessage(int id_pair, string method_pair, params object[] params_pair)
         {
-            //TODO: use proper json serializer library here
-            string commandMessage = $"{{\"id\":{id_pair},\"method\":\"{method_pair}\",\"params\":[{string.Join(",", params_pair)}]}}\r\n";
-            return SendString(commandMessage);
+            ThrowExceptionIfNotConnected();
+
+            var stream = yeelightTcpClient.GetStream();
+            //TODO: remove the stream read buffer flushing as soon as other methods requiring responses are implemented
+            byte[] tmpBuf = new byte[1024];
+            while (stream.DataAvailable) { stream.Read(tmpBuf, 0, tmpBuf.Length); }
+
+            SendString(JsonConvert.SerializeObject(new MessageTypes.CommandMessage() { Id = id_pair, Method = method_pair, Params = params_pair }) + "\r\n");
+
+            return JsonConvert.DeserializeObject<MessageTypes.ResponseMessage>(ReadString());
         }
-
-        class ResponseMessage
-        {
-            [JsonProperty("id")]
-            public int Id;
-
-            [JsonProperty("result", NullValueHandling = NullValueHandling.Ignore)]
-            public object[] Result;
-
-            [JsonProperty("error", NullValueHandling = NullValueHandling.Ignore)]
-            public object Error;
-        };
-
-        private ResponseMessage SendCommandAndGetMessage(int id_pair, string method_pair, string[] params_pair)
-        {
-            using (var stream = yeelightTcpClient.GetStream())
-            {
-                //TODO: remove the stream read buffer flushing as soon as other methods requiring responses are implemented
-                byte[] tmpBuf = new byte[1024];
-                while (stream.DataAvailable) { stream.Read(tmpBuf, 0, tmpBuf.Length); }
-            }
-
-            SendCommandMessage(id_pair, method_pair, params_pair);
-            return JsonConvert.DeserializeObject<ResponseMessage>(ReadString());
-        }
-
         private string ReadString()
         {
             ThrowExceptionIfNotConnected();
 
             string retVal = string.Empty;
-            using (var stream = yeelightTcpClient.GetStream())
-            {
-                byte[] buffer = new byte[1024];
+            var stream = yeelightTcpClient.GetStream();
+            byte[] buffer = new byte[1024];
 
-                int numBytesRead;
-                while ((numBytesRead = stream.Read(buffer, 0, buffer.Length)) > 0)
-                {
-                    retVal += Encoding.ASCII.GetString(buffer, 0, numBytesRead);
-                }
+            do
+            {
+                int numBytesRead = stream.Read(buffer, 0, buffer.Length);
+                retVal += Encoding.ASCII.GetString(buffer, 0, numBytesRead);
             }
+            while (stream.DataAvailable);
 
             return retVal;
         }

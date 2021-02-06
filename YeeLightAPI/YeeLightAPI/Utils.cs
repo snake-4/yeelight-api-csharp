@@ -9,9 +9,9 @@ namespace YeeLightAPI
             switch (value)
             {
                 case Constants.EffectParamValues.SUDDEN:
-                    return "\"sudden\"";
+                    return "sudden";
                 case Constants.EffectParamValues.SMOOTH:
-                    return "\"smooth\"";
+                    return "smooth";
             }
             return string.Empty;
         }
@@ -20,9 +20,9 @@ namespace YeeLightAPI
             switch (value)
             {
                 case Constants.PowerStateParamValues.ON:
-                    return "\"on\"";
+                    return "on";
                 case Constants.PowerStateParamValues.OFF:
-                    return "\"off\"";
+                    return "off";
             }
             return string.Empty;
         }
