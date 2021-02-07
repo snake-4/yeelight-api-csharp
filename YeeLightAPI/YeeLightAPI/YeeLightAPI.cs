@@ -283,7 +283,14 @@ namespace YeeLightAPI
 
             SendString(JsonConvert.SerializeObject(new MessageTypes.CommandMessage() { Id = id_pair, Method = method_pair, Params = params_pair }) + "\r\n");
 
-            return JsonConvert.DeserializeObject<MessageTypes.ResponseMessage>(ReadString());
+            var response = JsonConvert.DeserializeObject<MessageTypes.ResponseMessage>(ReadString());
+
+            if (response.Error != null)
+            {
+                throw new Exceptions.APIError(response.Error.Code, response.Error.Message);
+            }
+
+            return response;
         }
         private string ReadString()
         {

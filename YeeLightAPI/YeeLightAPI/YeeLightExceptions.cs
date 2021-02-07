@@ -25,6 +25,17 @@ namespace YeeLightAPI
             {
                 //TODO: add something here
             }
+
+            [Serializable]
+            public class APIError : Exception
+            {
+                public APIError(int code, string message) : base(message)
+                {
+                    ErrorCode = code;
+                }
+
+                public int ErrorCode;
+            }
         }
     }
 }

@@ -28,7 +28,16 @@ namespace YeeLightAPI
             public object[] Result;
 
             [JsonProperty("error", NullValueHandling = NullValueHandling.Ignore)]
-            public object Error;
+            public ResponseError Error;
+        };
+
+        internal class ResponseError
+        {
+            [JsonProperty("code")]
+            public int Code;
+
+            [JsonProperty("message")]
+            public string Message;
         };
     }
 }
