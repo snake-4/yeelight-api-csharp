@@ -188,6 +188,25 @@ namespace YeeLightAPI
             return SendCommandMessage(1, "set_rgb", new string[] { value.ToString(System.Globalization.CultureInfo.InvariantCulture), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
         }
 
+
+        public bool SetTemperature(
+            int temperature,
+            int duration = Constants.MinValueForDurationParameter,
+            Constants.EffectParamValues effectType = Constants.EffectParamValues.SUDDEN
+            )
+        {
+            var result = SendCommandMessage(
+                    1,
+                    "set_ct_abx",
+                    new object[] {
+                        temperature,
+                        Utils.GetJsonStringFromParamEnum(effectType),
+                        duration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                    }
+            );
+            return result;
+        }
+
         /// <summary>
         /// Closes the normal connection to the light 
         /// and tells light to make a music mode connection to the local device according to the arguments provided.
@@ -261,7 +280,7 @@ namespace YeeLightAPI
                 throw new Exceptions.DeviceIsAlreadyInMusicMode();
             }
         }
-        private bool SendCommandMessage(int id_pair, string method_pair, string[] params_pair)
+        private bool SendCommandMessage(int id_pair, string method_pair, object[] params_pair)
         {
             //TODO: use proper json serializer library here
             string commandMessage = $"{{\"id\":{id_pair},\"method\":\"{method_pair}\",\"params\":[{string.Join(",", params_pair)}]}}\r\n";
