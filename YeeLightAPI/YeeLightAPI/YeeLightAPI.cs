@@ -144,7 +144,14 @@ namespace YeeLightAPI
             ThrowExceptionIfIntArgIsOutOfRange("duration", duration, Constants.MinValueForDurationParameter);
             ThrowExceptionIfIntArgIsOutOfRange("brightness", brightness, 0, 100);
             ThrowExceptionIfNotConnected();
-            return SendCommandMessage(1, "set_bright", new string[] { brightness.ToString(System.Globalization.CultureInfo.InvariantCulture), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            return SendCommandMessage(1,
+                "set_bright",
+                new string[]
+                {
+                    brightness.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Utils.GetJsonStringFromParamEnum(effectType),
+                    duration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
         }
 
         /// <summary>
@@ -162,8 +169,13 @@ namespace YeeLightAPI
         {
             ThrowExceptionIfIntArgIsOutOfRange("duration", duration, Constants.MinValueForDurationParameter);
             ThrowExceptionIfNotConnected();
-            return SendCommandMessage(1, "set_power",
-                new string[] { Utils.GetJsonStringFromParamEnum(powerState), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            return SendCommandMessage(1,
+                "set_power",
+                new string[] {
+                    Utils.GetJsonStringFromParamEnum(powerState),
+                    Utils.GetJsonStringFromParamEnum(effectType),
+                    duration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
         }
 
         /// <summary>
@@ -185,7 +197,13 @@ namespace YeeLightAPI
             ThrowExceptionIfNotConnected();
             int value = (red << 16) | (green << 8) | blue;
             effectType.ToString();
-            return SendCommandMessage(1, "set_rgb", new string[] { value.ToString(System.Globalization.CultureInfo.InvariantCulture), Utils.GetJsonStringFromParamEnum(effectType), duration.ToString(System.Globalization.CultureInfo.InvariantCulture) });
+            return SendCommandMessage(1,
+                "set_rgb",
+                new string[] {
+                    value.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Utils.GetJsonStringFromParamEnum(effectType),
+                    duration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
         }
 
         /// <summary>
@@ -195,26 +213,23 @@ namespace YeeLightAPI
         /// <param name="duration"> Duration of the effect, minimum value for this argument is Constants.MinValueForDurationParameter and so is the default value</param>
         /// <param name="effectType"> Type of the effect, can be anything from Constants.EffectParamValues and default value is Constants.EffectParamValues.SUDDEN</param>
         /// <remarks>
-        /// Throws if duration argument is out of range or if device is not connected
+        /// Throws if duration argument is out of range, the temperature argument is out of range or if device is not connected
         /// </remarks>
-        public bool SetTemperature(
+        public bool SetColorTemperature(
             int temperature,
             int duration = Constants.MinValueForDurationParameter,
-            Constants.EffectParamValues effectType = Constants.EffectParamValues.SUDDEN
-            )
+            Constants.EffectParamValues effectType = Constants.EffectParamValues.SUDDEN)
         {
+            ThrowExceptionIfIntArgIsOutOfRange("duration", duration, Constants.MinValueForDurationParameter);
             ThrowExceptionIfIntArgIsOutOfRange("temperature", temperature, Constants.MinValueForTemperatureParameter, Constants.MaxValueForTemperatureParameter);
             ThrowExceptionIfNotConnected();
-            var result = SendCommandMessage(
-                    1,
-                    "set_ct_abx",
-                    new string[] {
-                        temperature.ToString(),
-                        Utils.GetJsonStringFromParamEnum(effectType),
-                        duration.ToString(System.Globalization.CultureInfo.InvariantCulture)
-                    }
-            );
-            return result;
+            return SendCommandMessage(1,
+                "set_ct_abx",
+                new string[] {
+                    temperature.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    Utils.GetJsonStringFromParamEnum(effectType),
+                    duration.ToString(System.Globalization.CultureInfo.InvariantCulture)
+                });
         }
 
         /// <summary>
