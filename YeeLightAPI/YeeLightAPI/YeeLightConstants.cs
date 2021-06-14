@@ -9,6 +9,8 @@ namespace YeeLightAPI
         public static class Constants
         {
             public const int MinValueForDurationParameter = 30;
+            public const int MinValueForTemperatureParameter = 1700;
+            public const int MaxValueForTemperatureParameter = 6500;
 
             public enum PowerStateParamValues
             {
