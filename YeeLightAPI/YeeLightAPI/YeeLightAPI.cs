@@ -197,8 +197,6 @@ namespace YeeLightAPI
         /// <remarks>
         /// Throws if duration argument is out of range or if device is not connected
         /// </remarks>
-
-
         public bool SetTemperature(
             int temperature,
             int duration = Constants.MinValueForDurationParameter,
